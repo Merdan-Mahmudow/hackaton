@@ -28,6 +28,10 @@ eda:
 evaluate:
 	$(UV) run python ml/evaluate_model.py
 
+compare:
+	@echo "Comparing Baseline and RuBERT models..."
+	$(UV) run python -m ml.compare_models --table
+
 feedback-export:
 	$(UV) run python ml/feedback_to_dataset.py
 

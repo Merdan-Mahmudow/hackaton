@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ML-Web · Анализ тональности</title>
+    <title>ML-Web · Дашборд анализа тональности</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,34 +15,123 @@
     <script src="app.js" defer></script>
   </head>
   <body>
-    <header class="hero">
-      <div class="hero__content">
-        <h1>ML/Web: мониторинг отзывов горожан</h1>
-        <p>
-          Сервис автоматически определяет тональность русскоязычных обращений, чтобы
-          город быстрее реагировал на жалобы и видел, какие цифровые сервисы нравятся
-          людям.
-        </p>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand__logo">HC</div>
+        <div>
+          <p class="muted">Hack Change 2025</p>
+          <strong>ML/Web · Аналитика обращений</strong>
+        </div>
       </div>
-      <div class="hero__meta">
-        <div class="card">
-          <p class="card__label">Модель</p>
-          <p class="card__value" id="model-name">Загрузка…</p>
-          <p class="card__hint" id="model-detail"></p>
-        </div>
-        <div class="card">
-          <p class="card__label">Всего предсказаний</p>
-          <p class="card__value" id="total-counter">0</p>
-          <p class="card__hint">данные обновляются в реальном времени</p>
-        </div>
+      <div class="topbar__actions">
+        <div class="chip chip--progress" id="macro-f1-chip">NRP Progress <span id="macro-f1-chip-value">—</span></div>
+        <button class="ghost" type="button" onclick="document.getElementById('bulk-form').scrollIntoView({ behavior: 'smooth' })">
+          Загрузить CSV
+        </button>
+        <button class="primary" type="button" onclick="document.getElementById('analyze-form').scrollIntoView({ behavior: 'smooth' })">
+          Анализ
+        </button>
+        <button class="secondary" type="button" onclick="document.getElementById('reports').scrollIntoView({ behavior: 'smooth' })">
+          Экспорт
+        </button>
       </div>
     </header>
 
-    <main>
-      <section class="panel">
-        <div class="panel__column">
-          <h2>1. Введите текст обращения</h2>
-          <form id="analyze-form">
+    <main class="layout">
+      <section class="panel panel--hero">
+        <div>
+          <p class="muted">Поддерживаем файлы и ручной ввод</p>
+          <h1>Подключите поток данных и контролируйте тональность обращений</h1>
+          <p class="hero__lead">
+            Веб-приложение принимает обращения граждан, классифицирует их на позитивные,
+            негативные и нейтральные, сохраняет историю и визуализирует качество модели.
+          </p>
+          <div class="hero__chips">
+            <div class="chip"><span class="dot dot--positive"></span><span id="model-name">Модель</span></div>
+            <div class="chip" id="model-detail">Классы: —</div>
+            <div class="chip"><span class="dot"></span>Всего предсказаний: <span id="total-counter">0</span></div>
+          </div>
+        </div>
+        <div class="score-card">
+          <div class="score-card__header">
+            <p>Macro F1 Score</p>
+            <span class="badge">Live</span>
+          </div>
+          <div class="score-card__body">
+            <div class="dial" id="macro-f1-progress">
+              <div class="dial__value" id="macro-f1-value">—</div>
+            </div>
+            <div class="score-meta">
+              <p class="muted">Качество модели</p>
+              <p id="macro-f1-caption">Запустите make evaluate, чтобы обновить метрики.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid grid--two">
+        <article class="card table-card">
+          <div class="card__header">
+            <div>
+              <p class="muted">Стриминг</p>
+              <h2>Поток данных (Live)</h2>
+            </div>
+            <div class="chip chip--live">В реальном времени</div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Текст</th>
+                  <th>Тональность</th>
+                  <th>Уверенность</th>
+                  <th>Время</th>
+                </tr>
+              </thead>
+              <tbody id="history"></tbody>
+            </table>
+            <p class="muted" id="history-empty">Нет последних обращений — выполните анализ или загрузите файл.</p>
+          </div>
+        </article>
+
+        <article class="card metrics-card">
+          <div class="card__header">
+            <div>
+              <p class="muted">Мониторинг</p>
+              <h2>Сводка модели</h2>
+            </div>
+            <div class="chip">Данные обновляются</div>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric">
+              <p class="metric__label">Accuracy</p>
+              <p class="metric__value" id="metric-accuracy">—</p>
+              <p class="muted" id="metrics-dataset">Нет отчёта</p>
+            </div>
+            <div class="metric">
+              <p class="metric__label">Macro F1</p>
+              <p class="metric__value" id="metric-macro-f1">—</p>
+              <p class="muted" id="metrics-updated"></p>
+            </div>
+            <div class="metric">
+              <p class="metric__label">Датасет</p>
+              <p class="metric__value" id="session-dataset">—</p>
+              <p class="muted">Версия отчёта</p>
+            </div>
+          </div>
+          <div class="label-breakdown" id="label-breakdown"></div>
+        </article>
+      </section>
+
+      <section class="grid grid--two">
+        <article class="card">
+          <div class="card__header">
+            <div>
+              <p class="muted">Ручной ввод</p>
+              <h2>Анализ обращения</h2>
+            </div>
+          </div>
+          <form id="analyze-form" class="stack">
             <label for="feedback-text">Сообщение</label>
             <textarea
               id="feedback-text"
@@ -52,40 +141,28 @@
               placeholder="Например: \"Спасибо за удобный сервис записи к врачу!\""
               required
             ></textarea>
-            <button type="submit">Анализировать</button>
+            <button class="primary" type="submit">Анализировать</button>
           </form>
-        </div>
-        <div class="panel__column">
-          <h2>2. Результат классификации</h2>
           <div class="result" id="result">
             <p class="muted">Введите текст и нажмите «Анализировать», чтобы получить прогноз.</p>
           </div>
           <div class="bars" id="probability-bars"></div>
-        </div>
-      </section>
+        </article>
 
-      <section class="panel panel--feedback">
-        <div class="panel__column panel__column--full">
-          <h2>3. Помогите улучшить модель</h2>
-          <p class="muted">
-            Если модель ошиблась или требуется уточнение, выберите правильную тональность и
-            добавьте комментарий. Правки сохраняются в журнал и используются для дообучения.
-          </p>
-          <form id="correction-form" class="feedback-form">
+        <article class="card">
+          <div class="card__header">
+            <div>
+              <p class="muted">Обратная связь</p>
+              <h2>Подтвердите или исправьте результат</h2>
+            </div>
+            <div class="badge badge--ghost">Используется для дообучения</div>
+          </div>
+          <form id="correction-form" class="feedback-form stack">
             <fieldset class="feedback-form__choices">
               <legend>Верная тональность</legend>
-              <label>
-                <input type="radio" name="user-label" value="positive" />
-                Положительная
-              </label>
-              <label>
-                <input type="radio" name="user-label" value="neutral" />
-                Нейтральная
-              </label>
-              <label>
-                <input type="radio" name="user-label" value="negative" />
-                Отрицательная
-              </label>
+              <label><input type="radio" name="user-label" value="positive" /> Положительная</label>
+              <label><input type="radio" name="user-label" value="neutral" /> Нейтральная</label>
+              <label><input type="radio" name="user-label" value="negative" /> Отрицательная</label>
             </fieldset>
             <label for="feedback-notes">Комментарий (опционально)</label>
             <textarea
@@ -94,54 +171,46 @@
               maxlength="500"
               placeholder="Например: модель не учла вторую часть сообщения"
             ></textarea>
-            <button type="submit" id="feedback-submit">Отправить исправление</button>
+            <button class="secondary" type="submit" id="feedback-submit">Отправить исправление</button>
             <p id="feedback-status" class="feedback-form__status">
               Сначала выполните анализ, чтобы отправить корректировку.
             </p>
           </form>
-        </div>
+        </article>
       </section>
 
-      <section class="panel panel--upload">
-        <div class="panel__column panel__column--full">
-          <h2>4. Пакетная классификация CSV</h2>
-          <p class="muted">
-            Загрузите CSV-файл с колонкой <code>text</code>, чтобы разом обработать до 1000 обращений и
-            получить распределение тональностей. Результаты можно скачать и добавить в отчёт.
-          </p>
-          <form id="bulk-form" class="bulk-form">
-            <label class="file-input">
-              <span id="bulk-file-label">Выберите CSV-файл</span>
-              <input type="file" id="bulk-file" accept=".csv,text/csv" required />
-            </label>
-            <button type="submit">Классифицировать файл</button>
-            <p id="bulk-status" class="bulk-form__status">
-              Файл должен быть в кодировке UTF-8 и содержать колонку <code>text</code>.
+      <section class="card" id="bulk-section">
+        <div class="card__header">
+          <div>
+            <p class="muted">Пакетная обработка</p>
+            <h2>CSV-классификация</h2>
+            <p class="muted">
+              Загрузите CSV-файл с колонкой <code>text</code>, чтобы обработать до 1000 обращений и
+              получить распределение тональностей. Результаты можно скачать и добавить в отчёт.
             </p>
-          </form>
-          <div id="bulk-summary" class="bulk-summary hidden"></div>
-          <div id="bulk-table" class="bulk-table hidden"></div>
-          <button id="bulk-download" class="bulk-download hidden">Скачать результаты (CSV)</button>
+          </div>
+          <div class="badge">UTF-8</div>
         </div>
+        <form id="bulk-form" class="bulk-form">
+          <label class="file-input">
+            <span id="bulk-file-label">Выберите CSV-файл</span>
+            <input type="file" id="bulk-file" accept=".csv,text/csv" required />
+          </label>
+          <button class="primary" type="submit">Классифицировать файл</button>
+          <p id="bulk-status" class="bulk-form__status">Файл должен содержать колонку <code>text</code>.</p>
+        </form>
+        <div id="bulk-summary" class="bulk-summary hidden"></div>
+        <div id="bulk-table" class="bulk-table hidden"></div>
+        <button id="bulk-download" class="secondary hidden">Скачать результаты (CSV)</button>
       </section>
 
-      <section class="panel panel--reports">
-        <div class="panel__column">
-          <h2>5. Метрики качества модели</h2>
-          <p class="muted">
-            Отчёт генерируется командой Data Science командой через <code>make evaluate</code>. После обучения
-            обновите страницу, чтобы увидеть Accuracy, Macro F1 и таблицу <code>classification_report</code>.
-          </p>
-          <div class="report-grid">
-            <div class="report-card">
-              <p class="report-card__label">Accuracy</p>
-              <p class="report-card__value" id="metric-accuracy">—</p>
-              <p class="report-card__hint" id="metrics-dataset">Запустите make evaluate</p>
-            </div>
-            <div class="report-card">
-              <p class="report-card__label">Macro F1</p>
-              <p class="report-card__value" id="metric-macro-f1">—</p>
-              <p class="report-card__hint" id="metrics-updated"></p>
+      <section class="grid grid--two" id="reports">
+        <article class="card">
+          <div class="card__header">
+            <div>
+              <p class="muted">Качество</p>
+              <h2>Метрики классификации</h2>
+              <p class="muted">Обновите отчёт через <code>make evaluate</code>.</p>
             </div>
           </div>
           <div class="metrics-table" id="metrics-table">
@@ -163,26 +232,29 @@
             </table>
             <div class="metrics-confusion" id="metrics-confusion"></div>
           </div>
-        </div>
-        <div class="panel__column">
-          <h2>6. Сводка истории обращений</h2>
-          <p class="muted">
-            Чтобы обновить показатели, выполните <code>make history-report</code>. Скрипт агрегирует
-            <code>data/prediction_history.jsonl</code> в удобную статистику.
-          </p>
-          <div class="report-grid report-grid--vertical">
-            <div class="report-card">
-              <p class="report-card__label">Всего записей</p>
-              <p class="report-card__value" id="history-total">0</p>
-              <p class="report-card__hint" id="history-range">Нет отчёта</p>
-            </div>
-            <div class="report-card">
-              <p class="report-card__label">Средняя длина</p>
-              <p class="report-card__value" id="history-average">0</p>
-              <p class="report-card__hint">символов</p>
+        </article>
+
+        <article class="card">
+          <div class="card__header">
+            <div>
+              <p class="muted">История</p>
+              <h2>Сводка обращений</h2>
+              <p class="muted">Выполните <code>make history-report</code> для обновления показателей.</p>
             </div>
           </div>
-          <div class="history-summary" id="history-summary">
+          <div class="history-summary">
+            <div class="summary-card">
+              <p class="muted">Всего записей</p>
+              <p class="metric__value" id="history-total">0</p>
+              <p class="muted" id="history-range">Нет отчёта</p>
+            </div>
+            <div class="summary-card">
+              <p class="muted">Средняя длина</p>
+              <p class="metric__value" id="history-average">0</p>
+              <p class="muted">символов</p>
+            </div>
+          </div>
+          <div class="history-lists">
             <div>
               <h4>Распределение классов</h4>
               <ul id="history-labels" class="history-list"></ul>
@@ -191,28 +263,17 @@
               <h4>Активность по датам</h4>
               <ul id="history-dates" class="history-list"></ul>
             </div>
-            <p class="muted" id="history-updated"></p>
           </div>
-        </div>
+          <p class="muted" id="history-updated"></p>
+        </article>
       </section>
 
-      <section class="panel">
-        <div class="panel__column">
-          <h2>Статистика за сессию</h2>
-          <canvas id="stats-chart" width="400" height="300"></canvas>
-        </div>
-        <div class="panel__column">
-          <h2>Последние обращения</h2>
-          <ul id="history" class="history"></ul>
-        </div>
+      <section class="card card--footer">
+        <p>
+          Стек: Python (FastAPI, scikit-learn), HTML/CSS/JS. API доступно по адресу
+          <code>/predict</code>, <code>/predict_batch</code>, <code>/stats</code>.
+        </p>
       </section>
     </main>
-
-    <footer>
-      <p>
-        Стек: Python (FastAPI, scikit-learn), HTML/CSS/JS. API доступно по адресу
-        <code>/predict</code>, <code>/predict_batch</code>, <code>/stats</code>.
-      </p>
-    </footer>
   </body>
 </html>

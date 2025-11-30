@@ -4,9 +4,11 @@ const textarea = document.getElementById('feedback-text');
 const resultBlock = document.getElementById('result');
 const barsContainer = document.getElementById('probability-bars');
 const historyList = document.getElementById('history');
+const historyEmpty = document.getElementById('history-empty');
 const totalCounter = document.getElementById('total-counter');
 const modelName = document.getElementById('model-name');
 const modelDetail = document.getElementById('model-detail');
+const sessionDataset = document.getElementById('session-dataset');
 const correctionForm = document.getElementById('correction-form');
 const feedbackNotes = document.getElementById('feedback-notes');
 const feedbackStatus = document.getElementById('feedback-status');
@@ -23,6 +25,11 @@ const metricsDatasetInfo = document.getElementById('metrics-dataset');
 const metricsUpdated = document.getElementById('metrics-updated');
 const metricsTableBody = document.getElementById('metrics-table-body');
 const metricsConfusion = document.getElementById('metrics-confusion');
+const labelBreakdown = document.getElementById('label-breakdown');
+const macroF1Value = document.getElementById('macro-f1-value');
+const macroF1Progress = document.getElementById('macro-f1-progress');
+const macroF1Chip = document.getElementById('macro-f1-chip-value');
+const macroF1Caption = document.getElementById('macro-f1-caption');
 const historyTotal = document.getElementById('history-total');
 const historyRange = document.getElementById('history-range');
 const historyAverage = document.getElementById('history-average');
@@ -52,10 +59,7 @@ function renderResult(prediction) {
     negative: { text: 'Отрицательная', class: 'result--negative' },
     neutral: { text: 'Нейтральная', class: 'result--neutral' },
   };
-  const { text, class: className } = mapping[label] || {
-    text: label,
-    class: 'result--neutral',
-  };
+  const { text, class: className } = mapping[label] || { text: label, class: 'result--neutral' };
   resultBlock.className = `result ${className}`;
   resultBlock.innerHTML = `<div><p class="muted">Модель определила тональность:</p><h3>${text}</h3></div>`;
   renderBars(scores);
@@ -160,18 +164,44 @@ function getMetricValue(entry, key) {
   return entry[normalizedKey];
 }
 
+function renderLabelDistribution(distribution) {
+  if (!labelBreakdown) return;
+  const entries = Object.entries(distribution || {});
+  if (!entries.length) {
+    labelBreakdown.innerHTML = '<p class="muted">Данные появятся после первых предсказаний.</p>';
+    return;
+  }
+  labelBreakdown.innerHTML = entries
+    .map(([label, value]) => {
+      const percent = Math.round((value || 0) * 1000) / 10;
+      return `
+        <div class="label-breakdown__row">
+          <div class="chip"><span class="dot" style="background:${labelColor(label)}"></span>${label}</div>
+          <div class="progress-bar"><span style="width:${percent}%;background:${labelColor(label)}"></span></div>
+          <strong>${percent}%</strong>
+        </div>`;
+    })
+    .join('');
+}
+
 function updateHistory(history) {
+  if (!historyList) return;
   historyList.innerHTML = '';
+  if (!history?.length) {
+    toggleHidden(historyEmpty, true);
+    return;
+  }
+  toggleHidden(historyEmpty, false);
   history.forEach((item) => {
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <div class="history__label">
-        <span>${new Date(item.timestamp).toLocaleTimeString()}</span>
-        <span>${item.label}</span>
-      </div>
-      <p class="history__text">${item.text}</p>
+    const confidence = item.scores?.[item.label] ?? 0;
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${item.text}</td>
+      <td><span class="chip" style="background:${labelColor(item.label)};color:#0f172a;border-color:${labelColor(item.label)}">${item.label}</span></td>
+      <td>${(confidence * 100).toFixed(1)}%</td>
+      <td>${new Date(item.timestamp).toLocaleTimeString()}</td>
     `;
-    historyList.appendChild(li);
+    historyList.appendChild(row);
   });
 }
 
@@ -179,6 +209,7 @@ function updateChart(distribution) {
   const labels = Object.keys(distribution);
   const data = Object.values(distribution).map((v) => Math.round(v * 100));
   const ctx = document.getElementById('stats-chart');
+  if (!ctx) return;
   if (!chart) {
     chart = new Chart(ctx, {
       type: 'doughnut',
@@ -211,6 +242,7 @@ async function refreshStats() {
     totalCounter.textContent = stats.total_predictions;
     updateHistory(stats.recent_predictions);
     updateChart(stats.label_distribution);
+    renderLabelDistribution(stats.label_distribution);
   } catch (error) {
     console.error(error);
   }
@@ -284,9 +316,7 @@ function renderCountsList(element, data, emptyMessage) {
     element.innerHTML = `<li class="muted">${emptyMessage}</li>`;
     return;
   }
-  element.innerHTML = entries
-    .map(([key, value]) => `<li><strong>${key}</strong>: ${value}</li>`)
-    .join('');
+  element.innerHTML = entries.map(([key, value]) => `<li><strong>${key}</strong>: ${value}</li>`).join('');
 }
 
 function formatDateRange(start, end) {
@@ -296,6 +326,16 @@ function formatDateRange(start, end) {
   return `${toLocale(start)} — ${toLocale(end)}`;
 }
 
+function updateMacroF1(value) {
+  const percent = Number.isFinite(value) ? Math.round(value * 100) : null;
+  const display = Number.isFinite(percent) ? `${percent}%` : '—';
+  if (macroF1Value) macroF1Value.textContent = display;
+  if (macroF1Chip) macroF1Chip.textContent = display;
+  if (macroF1Progress && Number.isFinite(percent)) {
+    macroF1Progress.style.background = `conic-gradient(var(--accent) ${percent}%, rgba(255,255,255,0.08) ${percent}% 100%)`;
+  }
+}
+
 async function loadEvalMetrics() {
   if (!metricAccuracy) return;
   try {
@@ -303,16 +343,26 @@ async function loadEvalMetrics() {
     metricAccuracy.textContent = formatPercent(metrics.accuracy);
     metricMacroF1.textContent = formatPercent(metrics.macro_f1);
     metricsDatasetInfo.textContent = metrics.dataset ? `Датасет: ${metrics.dataset}` : '';
+    if (sessionDataset) sessionDataset.textContent = metrics.dataset || '—';
     metricsUpdated.textContent = metrics.generated_at
       ? `Обновлено: ${new Date(metrics.generated_at).toLocaleString()}`
       : '';
+    if (macroF1Caption) {
+      macroF1Caption.textContent = metrics.generated_at
+        ? `Отчёт обновлён ${new Date(metrics.generated_at).toLocaleString()}`
+        : 'Запустите make evaluate, чтобы обновить метрики.';
+    }
+    updateMacroF1(metrics.macro_f1);
     renderClassificationReport(metrics.classification_report);
     renderConfusionMatrix(metrics.confusion_matrix);
   } catch (error) {
     metricAccuracy.textContent = '—';
     metricMacroF1.textContent = '—';
     metricsDatasetInfo.textContent = 'Нет отчёта — запустите make evaluate';
+    if (sessionDataset) sessionDataset.textContent = '—';
     metricsUpdated.textContent = error.message || '';
+    if (macroF1Caption) macroF1Caption.textContent = 'Нет отчёта — запустите make evaluate.';
+    updateMacroF1(null);
     if (metricsTableBody) {
       metricsTableBody.innerHTML = `
         <tr>
