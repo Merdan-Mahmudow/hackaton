@@ -435,9 +435,11 @@ MIT License — см. [LICENSE](LICENSE)
 ---
 Ссылка к проекту: https://ml.skyrodev.ru
 
-Ссылки на модель и датасет:
-Датасет: https://drive.google.com/file/d/1C91i2OfMkSvKwlWjIz3n8Yex0TiwVFHt/view?usp=sharing
-Модели: https://drive.google.com/file/d/1Mpf2G2Z3NNLvWydPKkgMQHryJCK67XCJ/view?usp=sharing
+#Ссылки на модель и датасет:
+
+ - Датасет: https://drive.google.com/file/d/1C91i2OfMkSvKwlWjIz3n8Yex0TiwVFHt/view?usp=sharing
+
+ - Модели: https://drive.google.com/file/d/1Mpf2G2Z3NNLvWydPKkgMQHryJCK67XCJ/view?usp=sharing
 
 ## 👥 Команда
 
