@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ML-Web · Анализ тональности</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero__content">
+        <h1>ML/Web: мониторинг отзывов горожан</h1>
+        <p>
+          Сервис автоматически определяет тональность русскоязычных обращений, чтобы
+          город быстрее реагировал на жалобы и видел, какие цифровые сервисы нравятся
+          людям.
+        </p>
+      </div>
+      <div class="hero__meta">
+        <div class="card">
+          <p class="card__label">Модель</p>
+          <p class="card__value" id="model-name">Загрузка…</p>
+          <p class="card__hint" id="model-detail"></p>
+        </div>
+        <div class="card">
+          <p class="card__label">Всего предсказаний</p>
+          <p class="card__value" id="total-counter">0</p>
+          <p class="card__hint">данные обновляются в реальном времени</p>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <div class="panel__column">
+          <h2>1. Введите текст обращения</h2>
+          <form id="analyze-form">
+            <label for="feedback-text">Сообщение</label>
+            <textarea
+              id="feedback-text"
+              name="text"
+              rows="6"
+              maxlength="2000"
+              placeholder="Например: \"Спасибо за удобный сервис записи к врачу!\""
+              required
+            ></textarea>
+            <button type="submit">Анализировать</button>
+          </form>
+        </div>
+        <div class="panel__column">
+          <h2>2. Результат классификации</h2>
+          <div class="result" id="result">
+            <p class="muted">Введите текст и нажмите «Анализировать», чтобы получить прогноз.</p>
+          </div>
+          <div class="bars" id="probability-bars"></div>
+        </div>
+      </section>
+
+      <section class="panel panel--feedback">
+        <div class="panel__column panel__column--full">
+          <h2>3. Помогите улучшить модель</h2>
+          <p class="muted">
+            Если модель ошиблась или требуется уточнение, выберите правильную тональность и
+            добавьте комментарий. Правки сохраняются в журнал и используются для дообучения.
+          </p>
+          <form id="correction-form" class="feedback-form">
+            <fieldset class="feedback-form__choices">
+              <legend>Верная тональность</legend>
+              <label>
+                <input type="radio" name="user-label" value="positive" />
+                Положительная
+              </label>
+              <label>
+                <input type="radio" name="user-label" value="neutral" />
+                Нейтральная
+              </label>
+              <label>
+                <input type="radio" name="user-label" value="negative" />
+                Отрицательная
+              </label>
+            </fieldset>
+            <label for="feedback-notes">Комментарий (опционально)</label>
+            <textarea
+              id="feedback-notes"
+              rows="3"
+              maxlength="500"
+              placeholder="Например: модель не учла вторую часть сообщения"
+            ></textarea>
+            <button type="submit" id="feedback-submit">Отправить исправление</button>
+            <p id="feedback-status" class="feedback-form__status">
+              Сначала выполните анализ, чтобы отправить корректировку.
+            </p>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel panel--upload">
+        <div class="panel__column panel__column--full">
+          <h2>4. Пакетная классификация CSV</h2>
+          <p class="muted">
+            Загрузите CSV-файл с колонкой <code>text</code>, чтобы разом обработать до 1000 обращений и
+            получить распределение тональностей. Результаты можно скачать и добавить в отчёт.
+          </p>
+          <form id="bulk-form" class="bulk-form">
+            <label class="file-input">
+              <span id="bulk-file-label">Выберите CSV-файл</span>
+              <input type="file" id="bulk-file" accept=".csv,text/csv" required />
+            </label>
+            <button type="submit">Классифицировать файл</button>
+            <p id="bulk-status" class="bulk-form__status">
+              Файл должен быть в кодировке UTF-8 и содержать колонку <code>text</code>.
+            </p>
+          </form>
+          <div id="bulk-summary" class="bulk-summary hidden"></div>
+          <div id="bulk-table" class="bulk-table hidden"></div>
+          <button id="bulk-download" class="bulk-download hidden">Скачать результаты (CSV)</button>
+        </div>
+      </section>
+
+      <section class="panel panel--reports">
+        <div class="panel__column">
+          <h2>5. Метрики качества модели</h2>
+          <p class="muted">
+            Отчёт генерируется командой Data Science командой через <code>make evaluate</code>. После обучения
+            обновите страницу, чтобы увидеть Accuracy, Macro F1 и таблицу <code>classification_report</code>.
+          </p>
+          <div class="report-grid">
+            <div class="report-card">
+              <p class="report-card__label">Accuracy</p>
+              <p class="report-card__value" id="metric-accuracy">—</p>
+              <p class="report-card__hint" id="metrics-dataset">Запустите make evaluate</p>
+            </div>
+            <div class="report-card">
+              <p class="report-card__label">Macro F1</p>
+              <p class="report-card__value" id="metric-macro-f1">—</p>
+              <p class="report-card__hint" id="metrics-updated"></p>
+            </div>
+          </div>
+          <div class="metrics-table" id="metrics-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Класс</th>
+                  <th>Precision</th>
+                  <th>Recall</th>
+                  <th>F1</th>
+                  <th>Support</th>
+                </tr>
+              </thead>
+              <tbody id="metrics-table-body">
+                <tr>
+                  <td colspan="5" class="muted">Метрики появятся после запуска make evaluate</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="metrics-confusion" id="metrics-confusion"></div>
+          </div>
+        </div>
+        <div class="panel__column">
+          <h2>6. Сводка истории обращений</h2>
+          <p class="muted">
+            Чтобы обновить показатели, выполните <code>make history-report</code>. Скрипт агрегирует
+            <code>data/prediction_history.jsonl</code> в удобную статистику.
+          </p>
+          <div class="report-grid report-grid--vertical">
+            <div class="report-card">
+              <p class="report-card__label">Всего записей</p>
+              <p class="report-card__value" id="history-total">0</p>
+              <p class="report-card__hint" id="history-range">Нет отчёта</p>
+            </div>
+            <div class="report-card">
+              <p class="report-card__label">Средняя длина</p>
+              <p class="report-card__value" id="history-average">0</p>
+              <p class="report-card__hint">символов</p>
+            </div>
+          </div>
+          <div class="history-summary" id="history-summary">
+            <div>
+              <h4>Распределение классов</h4>
+              <ul id="history-labels" class="history-list"></ul>
+            </div>
+            <div>
+              <h4>Активность по датам</h4>
+              <ul id="history-dates" class="history-list"></ul>
+            </div>
+            <p class="muted" id="history-updated"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__column">
+          <h2>Статистика за сессию</h2>
+          <canvas id="stats-chart" width="400" height="300"></canvas>
+        </div>
+        <div class="panel__column">
+          <h2>Последние обращения</h2>
+          <ul id="history" class="history"></ul>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Стек: Python (FastAPI, scikit-learn), HTML/CSS/JS. API доступно по адресу
+        <code>/predict</code>, <code>/predict_batch</code>, <code>/stats</code>.
+      </p>
+    </footer>
+  </body>
+</html>

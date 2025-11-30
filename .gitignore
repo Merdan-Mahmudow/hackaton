@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+models/*.joblib
+models/metadata.json
+models/transformer/
+reports/*
+!reports/.gitkeep
+!reports/*.sample.json
+data/feedback.jsonl
+data/feedback_dataset.csv
+data/prediction_history.jsonl
+*.log
+.env
+/data/*
+/models/*
