@@ -13,3 +13,4 @@ data/prediction_history.jsonl
 .env
 /data/*
 /models/*
+*.zip
